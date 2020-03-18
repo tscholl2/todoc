@@ -1,7 +1,7 @@
 #!/bin/bash
 for x in $(find build/ -executable -name "*_test")
 do
-    `$x`
+    $x
     if [[ $? == 0 ]]
     then
         echo -e "\033[1;92msuccess\033[0m: $x"

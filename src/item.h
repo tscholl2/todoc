@@ -1,7 +1,6 @@
 #ifndef ITEM_HEADER_H
 #define ITEM_HEADER_H
 #include <time.h>
-#include <stdint.h>
 #include <stdio.h>
 
 /**

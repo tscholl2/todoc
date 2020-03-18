@@ -1,6 +1,10 @@
+// for strptime
+#define _XOPEN_SOURCE
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 #include "item.h"
 #include "levenshtein.h"
 
@@ -60,36 +64,71 @@ int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
 
 Item *Item_read(FILE *in)
 {
+    Item *a = Item_new();
+    int ok;
+    // skip header
+    ok = fseek(in, 81, SEEK_CUR);
+    assert(ok == 0);
+    struct tm tm = {};
+    tm.tm_isdst = -1;
+    char buf[26] = {};
+    // skip left space
+    ok = fseek(in, 3, SEEK_CUR);
+    assert(ok == 0);
+    // read created time
+    ok = fread(buf, sizeof(char), sizeof(buf) - 1, in);
+    assert(ok == 25);
+    strptime(buf, "%c", &tm);
+    a->created = mktime(&tm);
+    // skip inbetween
+    ok = fseek(in, 24, SEEK_CUR);
+    assert(ok == 0);
+    // read completed time
+    ok = fread(buf, sizeof(char), sizeof(buf) - 1, in);
+    assert(ok == 25);
+    strptime(buf, "%c", &tm);
+    a->completed = ok == 25 ? mktime(&tm) : 0;
+    // skip after space and next line
+    ok = fseek(in, 3 + 1 + 80 + 1, SEEK_CUR);
+    assert(ok == 0);
+    // read text until \n\n\n
+    char *text = malloc(10000);
     int c;
-    // Tue May 26 21:51:03 2015
-    char date[26];
-    struct tm * dt;
-    strptime(date,"%a ",dt);
-    //fscanf(in,"",);
+    int i = 0;
+    int n = 0;
     while ((c = fgetc(in)) != EOF)
     {
+        n = c == '\n' ? n + 1 : 0;
+        if (n == 3)
+        {
+            text[--i] = 0;
+            break;
+        }
+        text[i++] = c;
     }
+    a->text = text;
+    a->text_length = i;
+    return a;
 }
 
 int Item_write(Item *a, FILE *out)
 {
     int ok;
-    char date[26] = {};
-    char *t = calloc(sizeof(char), a->text_length + 1);
-    memcpy(t, a->text, a->text_length);
-    if (a->completed != NULL)
+    char *date1 = asctime(localtime(&a->created)); // not thread safe
+    date1[24] = 0;
+    char *date2 = "-------------------------";
+    if (a->completed != 0)
     {
-        ok = ctime_s(date, sizeof(date), &a->created);
-        assert(ok == 0);
-        fprintf(out,
-                "================================================================================"
-                "   %s          --->          -------------------------   \n"
-                "================================================================================"
-                "%s\n\n\n",
-                date, t);
+        date2 = asctime(localtime(&a->completed));
+            date2[24] = 0;
     }
-    else
-    {
-        fprintf(out, "");
-    }
+    ok = fprintf(out, "================================================================================\n");
+    assert(ok == 81);
+    ok = fprintf(out, "   %s          --->            %s   \n", date1, date2);
+    assert(ok == 81);
+    ok = fprintf(out, "================================================================================\n");
+    assert(ok == 81);
+    ok = fprintf(out, "%s\n\n\n", a->text);
+    assert(ok == a->text_length + 3);
+    return 0;
 }
