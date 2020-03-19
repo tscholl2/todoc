@@ -12,14 +12,13 @@
 struct _Item
 {
     char *text;
-    size_t text_length;
     time_t created;
     time_t completed;
 };
 
 Item *Item_new()
 {
-    Item *a = calloc(1,sizeof(Item));
+    Item *a = calloc(1, sizeof(Item));
     a->created = time(NULL);
     return a;
 }
@@ -43,7 +42,7 @@ int Item_compare(Item *a, Item *b)
         return d;
     if ((d = a->created - b->created) != 0)
         return d;
-    return strncmp(a->text, b->text, a->text_length < b->text_length ? a->text_length : b->text_length);
+    return strcmp(a->text, b->text);
 }
 
 int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
@@ -67,7 +66,7 @@ int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
 Item *Item_read(FILE *in)
 {
     Item *a = Item_new();
-    int ok,c,i,n;
+    int ok, c, i, n;
     i = n = 0;
     while ((c = fgetc(in)) != EOF)
     {
@@ -80,16 +79,17 @@ Item *Item_read(FILE *in)
         return NULL;
     char *text = malloc(i + 1);
     text[i] = 0;
-    rewind(in);
+    fseek(in, -i, SEEK_CUR);
     ok = fread(text, sizeof(char), i, in);
     assert(ok == i);
     regex_t preg;
-    ok = regcomp(&preg,
-                 "================================================================================\n"
-                 "   (.{24})          --->            (.{24})   \n"
-                 "================================================================================\n"
-                 "([^(?:\n\n\n)]*)\n\n\n",
-                 REG_EXTENDED);
+    ok = regcomp(
+        &preg,
+        "================================================================================\n"
+        "   (.{24})          --->            (.{24})   \n"
+        "================================================================================\n"
+        "([^(?:\n\n\n)]*)\n\n\n",
+        REG_EXTENDED);
     assert(ok == 0);
     regmatch_t pmatch[4];
     ok = regexec(&preg, text, 4, pmatch, 0);
@@ -106,11 +106,9 @@ Item *Item_read(FILE *in)
         a->completed = mktime(&tm);
     }
     n = pmatch[3].rm_eo - pmatch[3].rm_so;
-    a->text = malloc(n + 1);
+    a->text = text;
     memcpy(a->text, &text[pmatch[3].rm_so], n);
     a->text[n] = 0;
-    a->text_length = n;
-    free(text);
     return a;
 }
 
@@ -125,15 +123,14 @@ int Item_write(Item *a, FILE *out)
         date2 = asctime(localtime(&a->completed));
         date2[24] = 0;
     }
-    ok = fprintf(out, "================================================================================\n");
-    assert(ok == 81);
-    ok = fprintf(out, "   %s          --->            %s   \n", date1, date2);
-    assert(ok == 81);
-    ok = fprintf(out, "================================================================================\n");
-    assert(ok == 81);
-    ok = fwrite(a->text, 1, a->text_length, out);
-    assert(ok == a->text_length);
-    ok = fprintf(out, "\n\n\n");
-    assert(ok == 3);
+    ok = fprintf(
+        out,
+        "================================================================================\n"
+        "   %s          --->            %s   \n"
+        "================================================================================\n"
+        "%s"
+        "\n\n\n",
+        date1, date2, a->text);
+    assert(ok == 81 * 3 + strlen(a->text) + 3);
     return 0;
 }

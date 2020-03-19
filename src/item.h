@@ -9,7 +9,7 @@
  *  - A (non-null) timestamp for when it was created
  *  - A (possibly null) timestamp for when it was completed
  * 
- * The arbitrary text must be trimmed and not contain double new lines.
+ * The arbitrary text must be trimmed and not contain "\n\n\n".
  **/
 typedef struct _Item Item;
 
