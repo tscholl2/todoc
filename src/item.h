@@ -31,7 +31,7 @@ Item* Item_read(FILE* in);
 int Item_write(Item* a, FILE* out);
 
 /**
- * Frees memory used by Item, but NOT by the text.
+ * Frees memory used by Item.
  **/
 void Item_free(Item *a);
 
