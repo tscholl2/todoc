@@ -115,12 +115,14 @@ Item *Item_read(FILE *in)
 int Item_write(Item *a, FILE *out)
 {
     int ok;
-    char *date1 = asctime(localtime(&a->created)); // not thread safe
-    date1[24] = 0;                                 // kill new line at the end
-    char *date2 = "------------------------";
+    struct tm tm;
+    char date1[26] = {};
+    asctime_r(localtime_r(&a->created, &tm), date1);
+    date1[24] = 0; // kill new line at the end
+    char date2[] = "------------------------";
     if (a->completed != 0)
     {
-        date2 = asctime(localtime(&a->completed));
+        asctime_r(localtime_r(&a->completed, &tm), date2);
         date2[24] = 0;
     }
     ok = fprintf(
