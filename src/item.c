@@ -19,13 +19,14 @@ struct _Item
 
 Item *Item_new()
 {
-    Item *a = malloc(sizeof(Item));
+    Item *a = calloc(1,sizeof(Item));
     a->created = time(NULL);
     return a;
 }
 
 void Item_free(Item *a)
 {
+    free(a->text);
     return free(a);
 }
 
