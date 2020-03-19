@@ -5,6 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <regex.h>
 #include "item.h"
 #include "levenshtein.h"
 
@@ -65,49 +66,50 @@ int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
 Item *Item_read(FILE *in)
 {
     Item *a = Item_new();
-    int ok;
-    // skip header
-    ok = fseek(in, 81, SEEK_CUR);
-    assert(ok == 0);
-    struct tm tm = {};
-    tm.tm_isdst = -1;
-    char buf[26] = {};
-    // skip left space
-    ok = fseek(in, 3, SEEK_CUR);
-    assert(ok == 0);
-    // read created time
-    ok = fread(buf, sizeof(char), sizeof(buf) - 1, in);
-    assert(ok == 25);
-    strptime(buf, "%c", &tm);
-    a->created = mktime(&tm);
-    // skip inbetween
-    ok = fseek(in, 24, SEEK_CUR);
-    assert(ok == 0);
-    // read completed time
-    ok = fread(buf, sizeof(char), sizeof(buf) - 1, in);
-    assert(ok == 25);
-    strptime(buf, "%c", &tm);
-    a->completed = ok == 25 ? mktime(&tm) : 0;
-    // skip after space and next line
-    ok = fseek(in, 3 + 1 + 80 + 1, SEEK_CUR);
-    assert(ok == 0);
-    // read text until \n\n\n
-    char *text = malloc(10000);
-    int c;
-    int i = 0;
-    int n = 0;
+    int ok,c,i,n;
+    i = n = 0;
     while ((c = fgetc(in)) != EOF)
     {
+        i++;
         n = c == '\n' ? n + 1 : 0;
         if (n == 3)
-        {
-            text[--i] = 0;
             break;
-        }
-        text[i++] = c;
     }
-    a->text = text;
-    a->text_length = i;
+    if (n != 3)
+        return NULL;
+    char *text = malloc(i + 1);
+    text[i] = 0;
+    rewind(in);
+    ok = fread(text, sizeof(char), i, in);
+    assert(ok == i);
+    regex_t preg;
+    ok = regcomp(&preg,
+                 "================================================================================\n"
+                 "   (.{24})          --->            (.{24})   \n"
+                 "================================================================================\n"
+                 "([^(?:\n\n\n)]*)\n\n\n",
+                 REG_EXTENDED);
+    assert(ok == 0);
+    regmatch_t pmatch[4];
+    ok = regexec(&preg, text, 4, pmatch, 0);
+    assert(ok == 0);
+    regfree(&preg);
+    struct tm tm = {};
+    tm.tm_isdst = -1;
+    assert(strptime(&text[pmatch[1].rm_so], "%c", &tm) == text + pmatch[1].rm_eo);
+    a->created = mktime(&tm);
+    a->completed = 0;
+    if (text[pmatch[2].rm_so] != '-')
+    {
+        assert(strptime(&text[pmatch[2].rm_so], "%c", &tm) == text + pmatch[2].rm_eo);
+        a->completed = mktime(&tm);
+    }
+    n = pmatch[3].rm_eo - pmatch[3].rm_so;
+    a->text = malloc(n + 1);
+    memcpy(a->text, &text[pmatch[3].rm_so], n);
+    a->text[n] = 0;
+    a->text_length = n;
+    free(text);
     return a;
 }
 
@@ -115,12 +117,12 @@ int Item_write(Item *a, FILE *out)
 {
     int ok;
     char *date1 = asctime(localtime(&a->created)); // not thread safe
-    date1[24] = 0;
-    char *date2 = "-------------------------";
+    date1[24] = 0;                                 // kill new line at the end
+    char *date2 = "------------------------";
     if (a->completed != 0)
     {
         date2 = asctime(localtime(&a->completed));
-            date2[24] = 0;
+        date2[24] = 0;
     }
     ok = fprintf(out, "================================================================================\n");
     assert(ok == 81);
@@ -128,7 +130,9 @@ int Item_write(Item *a, FILE *out)
     assert(ok == 81);
     ok = fprintf(out, "================================================================================\n");
     assert(ok == 81);
-    ok = fprintf(out, "%s\n\n\n", a->text);
-    assert(ok == a->text_length + 3);
+    ok = fwrite(a->text, 1, a->text_length, out);
+    assert(ok == a->text_length);
+    ok = fprintf(out, "\n\n\n");
+    assert(ok == 3);
     return 0;
 }
