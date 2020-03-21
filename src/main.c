@@ -20,9 +20,14 @@ int file_size(FILE *f)
 void command_help()
 {
     printf(
-        "todo app cli\n"
+        "todo\n"
+        "\n"
+        "  A 'simple' CLI app to keep track of a list of todos stored\n"
+        "  as a regular text file in $HOME/.todo\n"
+        "\n"
+        "  EXAMPLES:\n"
         "    todo add \"buy oat milk\"      --- add a new item\n"
-        "    todo complete 3              --- mark the 3rd item as done\n"
+        "    todo complete 3              --- mark the 3rd item as completed\n"
         "    todo search \"mikl\"           --- fuzzy searches all items\n"
         "    todo list                    --- lists all items\n"
         "    todo help                    --- these docs\n");
@@ -97,9 +102,24 @@ void command_complete(Item *items, int argc, char **argv)
     Item_sort(items);
 }
 
-void command_search()
+void command_search(Item *items, int argc, char **argv)
 {
-    printf("TODO search\n");
+    if (items[0] == NULL)
+        return;
+    assert(argc == 3);
+    char *fuzzy_needle = argv[2];
+    int n = 0;
+    while (items[n] != NULL)
+        n++;
+    int *values = calloc(n, sizeof(int));
+    for (int i = 0; i < n; i++)
+        values[i] = Item_fuzzy_search(items[i], fuzzy_needle, strlen(fuzzy_needle));
+    int min = values[0];
+    for (int i = 0; i < n; i++)
+        min = values[i] < min ? values[i] : min;
+    for (int i = 0; i < n; i++)
+        if (values[i] == min)
+            Item_write(items[i], stdout);
 }
 
 void command_edit(Item *items, int argc, char **argv)
@@ -164,7 +184,7 @@ int main(int argc, char *argv[])
     else if ((strcmp(argv[1], "complete") == 0) || (strcmp(argv[1], "c") == 0))
         command_complete(items, argc, argv);
     else if ((strcmp(argv[1], "search") == 0) || (strcmp(argv[1], "s") == 0))
-        command_search();
+        command_search(items, argc, argv);
     else if ((strcmp(argv[1], "edit") == 0) || (strcmp(argv[1], "e") == 0))
         command_edit(items, argc, argv);
     else if ((strcmp(argv[1], "list") == 0) || (strcmp(argv[1], "l") == 0))

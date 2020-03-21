@@ -84,18 +84,25 @@ void Item_sort(Item *items)
 
 int Item_fuzzy_search(Item a, char *fuzzy_needle, int fuzzy_needle_length)
 {
-    int result = 0;
+    int result = -1;
     char *haystack = a->text;
     int len1 = fuzzy_needle_length;
-    char c = haystack[0];
-    while (c != 0)
+    int N = strlen(a->text);
+    int l = 0, r = 0;
+    while (1)
     {
-        int len2 = 0;
-        while (c = haystack[len2], c != 0 && isspace(c))
-            len2++;
-        int d = -distance(fuzzy_needle, len1, haystack, len2);
-        result = result > d ? result : d;
-        haystack += len2;
+        l = r;
+        while (l < N && isspace(haystack[l]))
+            l++;
+        if (l == N)
+            break;
+        r = l;
+        while (r < N && !isspace(haystack[r]))
+            r++;
+        int d = distance(fuzzy_needle, len1, haystack + l, r - l);
+        result = (result < 0 || d < result) ? d : result;
+        if (r == N)
+            break;
     }
     return result;
 }

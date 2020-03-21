@@ -7,8 +7,12 @@ O_FILES=$(patsubst src/%.c,obj/%.o,$(C_FILES))
 T_FILES=$(shell find src/ -type f -name "*_test.c")
 TESTS=$(patsubst src/%.c,build/%,$(T_FILES))
 TARGET=build/main
+BINARY=todo
 
-all: $(TARGET)
+all: $(BINARY)
+
+$(BINARY): $(TARGET)
+	ln -s $< $@
 
 $(TARGET): $(O_FILES) $(patsubst build/%,obj/%.o,$(TARGET))
 	$(CC) $(CFLAGS) -o $@ $^
@@ -27,3 +31,4 @@ clean:
 	rm -f obj/*.o
 	rm -f build/*
 	rm -f test
+	rm -f todo

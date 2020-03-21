@@ -50,7 +50,7 @@ int Item_write(Item a, FILE *out);
 /**
  * Given a search term, this returns a "score" for
  * how likely that term or something like it appears
- * in the Item. A higher score is more likely to appear.
+ * in the Item. A smaller score is more likely to appear.
  **/
 int Item_fuzzy_search(Item a, char *fuzzy_needle, int fuzzy_needle_length);
 
