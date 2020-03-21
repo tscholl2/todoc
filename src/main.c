@@ -38,7 +38,7 @@ void command_help()
         "    todo list                    --- lists all items\n"
         "    todo help                    --- these docs\n");
 }
-void command_add(Item **items, int argc, char *argv[])
+void command_add(Item ***items, int argc, char *argv[])
 {
     char *text = NULL;
     // try to read from option
@@ -73,7 +73,7 @@ void command_add(Item **items, int argc, char *argv[])
         assert(system(cmd) == 0);
         FILE *f = fopen("/tmp/todo.txt", "rb+");
         int n = file_size(f);
-        text = calloc(1, n);
+        text = calloc(n, 1);
         fread(text, 1, n, f);
         fclose(f);
         remove("/tmp/todo.txt");
@@ -84,22 +84,33 @@ void command_add(Item **items, int argc, char *argv[])
     assert(strlen(text) > 0);
     // make a new item
     Item *a = Item_edit(Item_new(), text);
-    // where to put items
-    const char *home = getenv("HOME");
-    char file_path[strlen(home) + 10];
-    sprintf(file_path, "%s/.todo", home);
-    FILE *file = fopen(file_path, "wb");
-    // write new item
-    Item_write(a, file);
-    // write old items
-    while (items[0] != NULL)
-        Item_write((items++)[0], file);
     // print new item
     Item_write(a, stdout);
+    // add it to the list
+    int n = 0;
+    while ((*items)[n++] != NULL)
+        ;
+    Item **new_items = calloc(n + 1, sizeof(Item *));
+    for (int i = 0; i < n - 1; i++)
+    {
+        new_items[i] = (*items)[i];
+    }
+    new_items[n - 1] = a;
+    new_items[n] = NULL;
+    free(*items);
+    *items = new_items;
 }
-void command_complete()
+void command_complete(Item **items, int argc, char **argv)
 {
-    printf("TODO complete\n");
+    assert(argc == 3);
+    int i = 0;
+    i = atoi(argv[2]);
+    assert(i > 0);
+    int j = 0;
+    while (items[j++] != NULL)
+        if (j == i)
+            // TODO: skip if already completed
+            Item_write(Item_complete(items[j - 1]), stdout);
 }
 void command_search()
 {
@@ -127,18 +138,17 @@ int main(int argc, char *argv[])
     int n = 0;
     while (Item_read(file) != NULL)
         n++;
-    Item *items[n + 1];
+    Item **items = calloc(n + 1, sizeof(Item *));
     rewind(file);
     for (int i = 0; i < n; i++)
         items[i] = Item_read(file);
     items[n] = NULL;
-    fclose(file);
     if (argc < 2)
         command_help();
     else if ((strcmp(argv[1], "add") == 0) || (strcmp(argv[1], "a") == 0))
-        command_add(items, argc, argv);
+        command_add(&items, argc, argv);
     else if ((strcmp(argv[1], "complete") == 0) || (strcmp(argv[1], "c") == 0))
-        command_complete();
+        command_complete(items, argc, argv);
     else if ((strcmp(argv[1], "search") == 0) || (strcmp(argv[1], "s") == 0))
         command_search();
     else if ((strcmp(argv[1], "edit") == 0) || (strcmp(argv[1], "e") == 0))
@@ -147,4 +157,9 @@ int main(int argc, char *argv[])
         command_list(items);
     else
         command_help();
+    // save items
+    rewind(file);
+    while (items[0] != NULL)
+        Item_write((items++)[0], file);
+    fclose(file);
 }

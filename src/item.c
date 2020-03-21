@@ -31,7 +31,8 @@ void Item_free(Item *a)
 
 Item *Item_complete(Item *a)
 {
-    a->completed = time(NULL);
+    if (a->completed == 0)
+        a->completed = time(NULL);
     return a;
 }
 
@@ -39,7 +40,7 @@ Item *Item_edit(Item *a, char *text)
 {
     free(a->text);
     int n = strlen(text);
-    a->text = calloc(sizeof(char), n + 1);
+    a->text = calloc(n + 1, sizeof(char));
     memcpy(a->text, text, n);
     return a;
 }
@@ -74,7 +75,7 @@ int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
 
 Item *Item_read(FILE *in)
 {
-    int ok, c, i=0, n=0;
+    int ok, c, i = 0, n = 0;
     while ((c = fgetc(in)) != EOF)
     {
         i++;
