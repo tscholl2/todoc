@@ -11,8 +11,8 @@
 
 int file_size(FILE *f)
 {
-    fseek(f, 0, SEEK_END); // seek to end of file
-    int size = ftell(f);   // get current file pointer
+    fseek(f, 0, SEEK_END);
+    int size = ftell(f);
     rewind(f);
     return size;
 }
@@ -73,8 +73,8 @@ void command_add(Item **items, int argc, char *argv[])
         assert(system(cmd) == 0);
         FILE *f = fopen("/tmp/todo.txt", "rb+");
         int n = file_size(f);
-        text = calloc(sizeof(char), n);
-        fread(text, sizeof(char), n, f);
+        text = calloc(1, n);
+        fread(text, 1, n, f);
         fclose(f);
         remove("/tmp/todo.txt");
     }
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     int n = 0;
     while (Item_read(file) != NULL)
         n++;
-    Item *items[n+1];
+    Item *items[n + 1];
     rewind(file);
     for (int i = 0; i < n; i++)
         items[i] = Item_read(file);
