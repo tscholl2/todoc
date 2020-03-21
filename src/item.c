@@ -35,6 +35,15 @@ Item *Item_complete(Item *a)
     return a;
 }
 
+Item *Item_edit(Item *a, char *text)
+{
+    free(a->text);
+    int n = strlen(text);
+    a->text = calloc(sizeof(char), n + 1);
+    memcpy(a->text, text, n);
+    return a;
+}
+
 int Item_compare(Item *a, Item *b)
 {
     time_t d;
@@ -65,9 +74,7 @@ int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
 
 Item *Item_read(FILE *in)
 {
-    Item *a = Item_new();
-    int ok, c, i, n;
-    i = n = 0;
+    int ok, c, i=0, n=0;
     while ((c = fgetc(in)) != EOF)
     {
         i++;
@@ -98,6 +105,7 @@ Item *Item_read(FILE *in)
     struct tm tm = {};
     tm.tm_isdst = -1;
     assert(strptime(&text[pmatch[1].rm_so], "%c", &tm) == text + pmatch[1].rm_eo);
+    Item *a = Item_new();
     a->created = mktime(&tm);
     a->completed = 0;
     if (text[pmatch[2].rm_so] != '-')

@@ -19,6 +19,12 @@ typedef struct _Item Item;
 Item *Item_new();
 
 /**
+ * Copies the string "text" into the item's
+ * description.
+ **/
+Item *Item_edit(Item* a, char* text);
+
+/**
  * Reads an item from an input stream.
  * Returns NULL if error occurs or if EOF.
  **/
