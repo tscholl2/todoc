@@ -17,17 +17,6 @@ int file_size(FILE *f)
     return size;
 }
 
-void trim(char *s)
-{
-    char *p = s;
-    int l = strlen(p);
-    while (isspace(p[l - 1]))
-        p[--l] = 0;
-    while (*p && isspace(*p))
-        ++p, --l;
-    memmove(s, p, l + 1);
-}
-
 void command_help()
 {
     printf(
@@ -38,7 +27,8 @@ void command_help()
         "    todo list                    --- lists all items\n"
         "    todo help                    --- these docs\n");
 }
-void command_add(Item ***items, int argc, char *argv[])
+
+void command_add(Item *items, int argc, char *argv[])
 {
     char *text = NULL;
     // try to read from option
@@ -80,27 +70,20 @@ void command_add(Item ***items, int argc, char *argv[])
     }
     // trim result
     assert(text != NULL);
-    trim(text);
-    assert(strlen(text) > 0);
     // make a new item
-    Item *a = Item_edit(Item_new(), text);
+    Item a = Item_edit(Item_new(), text);
     // print new item
     Item_write(a, stdout);
     // add it to the list
     int n = 0;
-    while ((*items)[n++] != NULL)
+    while (items[n++] != NULL)
         ;
-    Item **new_items = calloc(n + 1, sizeof(Item *));
-    for (int i = 0; i < n - 1; i++)
-    {
-        new_items[i] = (*items)[i];
-    }
-    new_items[n - 1] = a;
-    new_items[n] = NULL;
-    free(*items);
-    *items = new_items;
+    printf("%d items found\n", n);
+    items[n - 1] = a;
+    Item_sort(items);
 }
-void command_complete(Item **items, int argc, char **argv)
+
+void command_complete(Item *items, int argc, char **argv)
 {
     assert(argc == 3);
     int i = 0;
@@ -111,16 +94,47 @@ void command_complete(Item **items, int argc, char **argv)
         if (j == i)
             // TODO: skip if already completed
             Item_write(Item_complete(items[j - 1]), stdout);
+    Item_sort(items);
 }
+
 void command_search()
 {
     printf("TODO search\n");
 }
-void command_edit()
+
+void command_edit(Item *items, int argc, char **argv)
 {
-    printf("TODO edit\n");
+    assert(argc == 3);
+    int i = 0;
+    i = atoi(argv[2]);
+    assert(i > 0);
+    int j = 0;
+    while (items[j++] != NULL)
+        if (j == i)
+        {
+            Item a = items[j - 1];
+            const char *editor = getenv("EDITOR");
+            if (editor == NULL)
+                editor = "nano";
+            char cmd[100] = {};
+            sprintf(cmd, "%s /tmp/todo.txt", editor);
+            FILE *f = fopen("/tmp/todo.txt", "wb");
+            Item_write(a, f);
+            Item_free(a);
+            fclose(f);
+            assert(system(cmd) == 0);
+            f = fopen("/tmp/todo.txt", "rb");
+            a = Item_read(f);
+            remove("/tmp/todo.txt");
+            fclose(f);
+            assert(a != NULL);
+            items[j - 1] = a;
+            Item_write(a, stdout);
+        }
+    Item_sort(items);
 }
-void command_list(Item **items)
+
+void command_list(Item *items)
 {
     while (items[0] != NULL)
         Item_write((items++)[0], stdout);
@@ -135,24 +149,24 @@ int main(int argc, char *argv[])
     if (file == NULL)
         file = fopen(file_path, "ab+");
     assert(file != NULL);
+    // read items
     int n = 0;
     while (Item_read(file) != NULL)
         n++;
-    Item **items = calloc(n + 1, sizeof(Item *));
+    Item *items = calloc(n + 2, sizeof(Item)); // leave an extra space at the end
     rewind(file);
     for (int i = 0; i < n; i++)
         items[i] = Item_read(file);
-    items[n] = NULL;
     if (argc < 2)
         command_help();
     else if ((strcmp(argv[1], "add") == 0) || (strcmp(argv[1], "a") == 0))
-        command_add(&items, argc, argv);
+        command_add(items, argc, argv);
     else if ((strcmp(argv[1], "complete") == 0) || (strcmp(argv[1], "c") == 0))
         command_complete(items, argc, argv);
     else if ((strcmp(argv[1], "search") == 0) || (strcmp(argv[1], "s") == 0))
         command_search();
     else if ((strcmp(argv[1], "edit") == 0) || (strcmp(argv[1], "e") == 0))
-        command_edit();
+        command_edit(items, argc, argv);
     else if ((strcmp(argv[1], "list") == 0) || (strcmp(argv[1], "l") == 0))
         command_list(items);
     else

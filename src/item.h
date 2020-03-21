@@ -11,58 +11,58 @@
  * 
  * The arbitrary text must be trimmed and not contain "\n\n\n".
  **/
-typedef struct _Item Item;
+typedef struct _Item* Item;
 
 /**
  * Allocates and returns a new Item.
  **/
-Item *Item_new();
+Item Item_new();
 
 /**
  * Frees memory used by Item.
  **/
-void Item_free(Item *a);
+void Item_free(Item a);
 
 /**
  * Copies the string "text" into the item's
  * description.
  **/
-Item *Item_edit(Item *a, char *text);
+Item Item_edit(Item a, char *text);
 
 /**
  * Sets the completed time.
  * The adjusted item is returned.
  **/
-Item *Item_complete(Item *a);
+Item Item_complete(Item a);
 
 /**
  * Reads an item from an input stream.
  * Returns NULL if error occurs or if EOF.
  **/
-Item *Item_read(FILE *in);
+Item Item_read(FILE *in);
 
 /**
  * Writes this item to an output stream.
  * Returns 0 if successful.
  **/
-int Item_write(Item *a, FILE *out);
+int Item_write(Item a, FILE *out);
 
 /**
  * Given a search term, this returns a "score" for
  * how likely that term or something like it appears
  * in the Item. A higher score is more likely to appear.
  **/
-int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length);
+int Item_fuzzy_search(Item a, char *fuzzy_needle, int fuzzy_needle_length);
 
 /**
  * Comparisons are done so that the "first/minimal/smallest" item is the
  * newest one that is not completed.
  **/
-int Item_compare(Item *a, Item *b);
+int Item_compare(Item a, Item b);
 
 /**
  * Sorts a NULL-terminated list of items.
  **/
-void Item_sort(Item **items);
+void Item_sort(Item *items);
 
 #endif

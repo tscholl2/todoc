@@ -16,28 +16,42 @@ struct _Item
     time_t completed;
 };
 
-Item *Item_new()
+Item Item_new()
 {
-    Item *a = calloc(1, sizeof(Item));
+    Item a = calloc(1, sizeof(Item));
     a->created = time(NULL);
     return a;
 }
 
-void Item_free(Item *a)
+void Item_free(Item a)
 {
     free(a->text);
     return free(a);
 }
 
-Item *Item_complete(Item *a)
+Item Item_complete(Item a)
 {
     if (a->completed == 0)
         a->completed = time(NULL);
     return a;
 }
 
-Item *Item_edit(Item *a, char *text)
+void trim(char *s)
 {
+    char *p = s;
+    int l = strlen(p);
+    while (isspace(p[l - 1]))
+        p[--l] = 0;
+    while (*p && isspace(*p))
+        ++p, --l;
+    memmove(s, p, l + 1);
+}
+
+Item Item_edit(Item a, char *text)
+{
+    assert(text != NULL);
+    trim(text);
+    assert(strlen(text) > 0);
     free(a->text);
     int n = strlen(text);
     a->text = calloc(n + 1, sizeof(char));
@@ -45,7 +59,7 @@ Item *Item_edit(Item *a, char *text)
     return a;
 }
 
-int Item_compare(Item *a, Item *b)
+int Item_compare(Item a, Item b)
 {
     time_t d;
     if ((d = a->completed - b->completed) != 0)
@@ -57,18 +71,18 @@ int Item_compare(Item *a, Item *b)
 
 int cmpfunc(const void *a, const void *b)
 {
-    return Item_compare((Item *)a, (Item *)b);
+    return -Item_compare((Item)a, (Item)b);
 }
 
-void Item_sort(Item **items)
+void Item_sort(Item *items)
 {
     int n = 0;
     while (items[n++] != NULL)
         ;
-    qsort(items, n, sizeof(Item *), cmpfunc);
+    qsort(items, n - 1, sizeof(Item), cmpfunc);
 }
 
-int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
+int Item_fuzzy_search(Item a, char *fuzzy_needle, int fuzzy_needle_length)
 {
     int result = 0;
     char *haystack = a->text;
@@ -86,7 +100,7 @@ int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
     return result;
 }
 
-Item *Item_read(FILE *in)
+Item Item_read(FILE *in)
 {
     int ok, c, i = 0, n = 0;
     while ((c = fgetc(in)) != EOF)
@@ -119,7 +133,7 @@ Item *Item_read(FILE *in)
     struct tm tm = {};
     tm.tm_isdst = -1;
     assert(strptime(&text[pmatch[1].rm_so], "%c", &tm) == text + pmatch[1].rm_eo);
-    Item *a = Item_new();
+    Item a = Item_new();
     a->created = mktime(&tm);
     a->completed = 0;
     if (text[pmatch[2].rm_so] != '-')
@@ -131,10 +145,12 @@ Item *Item_read(FILE *in)
     a->text = text;
     memcpy(a->text, &text[pmatch[3].rm_so], n);
     a->text[n] = 0;
+    trim(a->text);
+    assert(strlen(a->text) > 0);
     return a;
 }
 
-int Item_write(Item *a, FILE *out)
+int Item_write(Item a, FILE *out)
 {
     int ok;
     struct tm tm;

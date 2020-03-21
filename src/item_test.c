@@ -26,10 +26,10 @@ int main()
       "";
   FILE *f;
   f = fmemopen(s, sizeof s, "rb+");
-  Item *a = Item_read(f);
-  Item *b = Item_read(f);
-  Item *c = Item_read(f);
-  Item *d = Item_read(f);
+  Item a = Item_read(f);
+  Item b = Item_read(f);
+  Item c = Item_read(f);
+  Item d = Item_read(f);
   assert(d == NULL);
   fclose(f);
   char buf[5000] = {};
