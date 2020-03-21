@@ -55,6 +55,19 @@ int Item_compare(Item *a, Item *b)
     return strcmp(a->text, b->text);
 }
 
+int cmpfunc(const void *a, const void *b)
+{
+    return Item_compare((Item *)a, (Item *)b);
+}
+
+void Item_sort(Item **items)
+{
+    int n = 0;
+    while (items[n++] != NULL)
+        ;
+    qsort(items, n, sizeof(Item *), cmpfunc);
+}
+
 int Item_fuzzy_search(Item *a, char *fuzzy_needle, int fuzzy_needle_length)
 {
     int result = 0;
